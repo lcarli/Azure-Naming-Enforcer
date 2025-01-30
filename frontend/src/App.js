@@ -3,7 +3,8 @@ import resources from "./resources";
 
 export default function App() {
   const [resourcesList, setResourcesList] = useState([]);
-  const [policies, setPolicies] = useState(null);
+  const [firstPolicy, setFirstPolicy] = useState(null);
+  const [policiesGenerated, setPoliciesGenerated] = useState(false);
 
   const addResource = () => {
     setResourcesList([...resourcesList, { selectedResource: "", abbreviation: "", pattern: "", customNaming: false }]);
@@ -32,20 +33,36 @@ export default function App() {
       });
 
       const data = await response.json();
-      setPolicies(data.policies);
+      if (data.policies.length > 0) {
+        setFirstPolicy(data.policies[0]);
+        setPoliciesGenerated(true);
+      }
     } catch (error) {
       console.error("Error generating policies:", error);
     }
   };
 
-  const downloadPolicies = () => {
-    if (!policies) return;
+  const downloadPolicies = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/downloadPolicies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resources: resourcesList }),
+      });
 
-    const blob = new Blob([JSON.stringify(policies, null, 2)], { type: "application/json" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "azure_policies.json";
-    link.click();
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = "azure_policies.zip";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    } catch (error) {
+      console.error("Error downloading policies:", error);
+    }
   };
 
   return (
@@ -54,7 +71,6 @@ export default function App() {
         Azure Naming Enforcer
       </header>
 
-      {/* Explanation Box (Full Width, Less Height) */}
       <div className="bg-white shadow-md rounded-lg p-4 w-full text-gray-700 text-center">
         <h2 className="text-lg font-bold">How to Use</h2>
         <p>
@@ -83,12 +99,10 @@ export default function App() {
         </div>
       </div>
 
-      {/* Add Resource Button */}
       <button className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-700 mt-6 mb-4" onClick={addResource}>
         Add Resource
       </button>
 
-      {/* Table */}
       {resourcesList.length > 0 && (
         <div className="w-full max-w-4xl">
           <table className="w-full border-collapse border border-gray-300 text-left">
@@ -102,7 +116,6 @@ export default function App() {
             <tbody>
               {resourcesList.map((res, index) => (
                 <tr key={index} className="bg-white text-black">
-                  {/* Dropdown */}
                   <td className="border border-gray-300 px-4 py-2">
                     <select
                       className="p-2 border rounded w-48"
@@ -118,12 +131,10 @@ export default function App() {
                     </select>
                   </td>
 
-                  {/* Abbreviation */}
                   <td className="border border-gray-300 px-4 py-2 text-center">
                     {!res.customNaming ? `${res.abbreviation}-` : "Custom Naming Enabled"}
                   </td>
 
-                  {/* Naming Pattern + Checkbox */}
                   <td className="border border-gray-300 px-4 py-2 flex items-center">
                     <input
                       type="text"
@@ -147,13 +158,13 @@ export default function App() {
         </div>
       )}
 
-      {/* Generate Policies and Download Buttons */}
-      {resourcesList.length > 0 && (
+     {resourcesList.length > 0 && (
         <div className="flex gap-4 mt-6">
           <button className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-700" onClick={generatePolicies}>
             Generate Policies
           </button>
-          {policies && (
+
+          {policiesGenerated && (
             <button className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-700" onClick={downloadPolicies}>
               Download Policies
             </button>
@@ -161,11 +172,10 @@ export default function App() {
         </div>
       )}
 
-      {/* Display Generated Policies */}
-      {policies && (
+      {firstPolicy && (
         <div className="mt-6 p-4 bg-white text-black shadow-lg rounded w-full max-w-4xl">
-          <h2 className="text-xl font-semibold mb-2">Generated Policies</h2>
-          <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">{JSON.stringify(policies, null, 2)}</pre>
+          <h2 className="text-xl font-semibold mb-2">Example Policy</h2>
+          <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">{JSON.stringify(firstPolicy, null, 2)}</pre>
         </div>
       )}
     </div>

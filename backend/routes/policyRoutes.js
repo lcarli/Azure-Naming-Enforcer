@@ -1,8 +1,9 @@
 const express = require("express");
-const { generatePolicies } = require("../controllers/policyController");
+const { generatePoliciesJSON, generatePoliciesZIP } = require("../controllers/policyController");
 
 const router = express.Router();
 
-router.post("/generatePolicies", generatePolicies);
+router.post("/generatePolicies", generatePoliciesJSON);
+router.post("/downloadPolicies", generatePoliciesZIP);
 
 module.exports = router;
