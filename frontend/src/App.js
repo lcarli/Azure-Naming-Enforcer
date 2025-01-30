@@ -3,6 +3,7 @@ import resources from "./resources";
 
 export default function App() {
   const [resourcesList, setResourcesList] = useState([]);
+  const [policies, setPolicies] = useState(null);
 
   const addResource = () => {
     setResourcesList([...resourcesList, { selectedResource: "", abbreviation: "", pattern: "", customNaming: false }]);
@@ -22,13 +23,29 @@ export default function App() {
     setResourcesList(updatedList);
   };
 
-  const generatePolicies = () => {
-    const policies = resourcesList.map((res) => ({
-      resourceType: res.selectedResource,
-      pattern: res.customNaming ? res.pattern : `${res.abbreviation}-${res.pattern}`,
-    }));
+  const generatePolicies = async () => {
+    try {
+      const response = await fetch("http://localhost:3001/api/generatePolicies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resources: resourcesList }),
+      });
 
-    console.log("Generated Policies:", policies);
+      const data = await response.json();
+      setPolicies(data.policies);
+    } catch (error) {
+      console.error("Error generating policies:", error);
+    }
+  };
+
+  const downloadPolicies = () => {
+    if (!policies) return;
+
+    const blob = new Blob([JSON.stringify(policies, null, 2)], { type: "application/json" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "azure_policies.json";
+    link.click();
   };
 
   return (
@@ -130,11 +147,26 @@ export default function App() {
         </div>
       )}
 
-      {/* Generate Policies Button */}
+      {/* Generate Policies and Download Buttons */}
       {resourcesList.length > 0 && (
-        <button className="mt-6 bg-green-500 text-white px-6 py-2 rounded hover:bg-green-700" onClick={generatePolicies}>
-          Generate Policies
-        </button>
+        <div className="flex gap-4 mt-6">
+          <button className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-700" onClick={generatePolicies}>
+            Generate Policies
+          </button>
+          {policies && (
+            <button className="bg-gray-500 text-white px-6 py-2 rounded hover:bg-gray-700" onClick={downloadPolicies}>
+              Download Policies
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Display Generated Policies */}
+      {policies && (
+        <div className="mt-6 p-4 bg-white text-black shadow-lg rounded w-full max-w-4xl">
+          <h2 className="text-xl font-semibold mb-2">Generated Policies</h2>
+          <pre className="bg-gray-100 p-4 rounded text-sm overflow-x-auto">{JSON.stringify(policies, null, 2)}</pre>
+        </div>
       )}
     </div>
   );

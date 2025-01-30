@@ -8,6 +8,7 @@ const generatePolicies = (req, res) => {
   }
 
   const policies = resources.map((res) => {
+    // Se customNaming estiver ativado, usamos o pattern como está (mas ainda aplicamos regex)
     const pattern = res.customNaming ? res.pattern : `${res.abbreviation}-${res.pattern}`;
     return {
       resourceType: res.selectedResource,
