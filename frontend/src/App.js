@@ -26,7 +26,7 @@ export default function App() {
 
   const generatePolicies = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/generatePolicies", {
+      const response = await fetch("https://azurenamingenforcer.azurewebsites.net/api/generatePolicies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resources: resourcesList }),
@@ -44,7 +44,7 @@ export default function App() {
 
   const downloadPolicies = async () => {
     try {
-      const response = await fetch("http://localhost:3001/api/downloadPolicies", {
+      const response = await fetch("https://azurenamingenforcer.azurewebsites.net/api/downloadPolicies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ resources: resourcesList }),
