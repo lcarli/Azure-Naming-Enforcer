@@ -1,5 +1,6 @@
 import { useState } from "react";
 import resources from "./resources";
+import namingRules from "./namingRules";
 
 export default function App() {
   const [resourcesList, setResourcesList] = useState([]);
@@ -18,18 +19,48 @@ export default function App() {
       const resource = resources.find((r) => r.name === value);
       if (resource) {
         updatedList[index].abbreviation = resource.abbreviation;
+
+        const rule = namingRules[resource.provider]?.[resource.name];
+        if (rule) {
+          const workload = "app";
+          const environment = "prod";
+          const region = "cae";
+          const instance = "001";
+
+          let placeholder = `${resource.abbreviation}-${workload}-${environment}-${region}-${instance}`;
+
+          if (placeholder.length > rule.length.max) {
+            placeholder = placeholder.substring(0, rule.length.max);
+          }
+
+          if (rule.pattern) {
+            placeholder = placeholder.replace(/[^a-z0-9-]/g, "");
+          }
+
+          updatedList[index].placeholder = placeholder;
+        }
       }
     }
-
     setResourcesList(updatedList);
   };
 
   const generatePolicies = async () => {
     try {
+      const payload = {
+        resources: resourcesList.map(res => {
+          const resource = resources.find(r => r.name === res.selectedResource);
+          return {
+            name: res.selectedResource,
+            type: resource ? resource.type : "",
+            pattern: res.pattern
+          };
+        })
+      };
+
       const response = await fetch("https://azurenamingenforcer.azurewebsites.net/api/generatePolicies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resources: resourcesList }),
+        body: JSON.stringify(payload),
       });
 
       const data = await response.json();
@@ -41,6 +72,7 @@ export default function App() {
       console.error("Error generating policies:", error);
     }
   };
+
 
   const downloadPolicies = async () => {
     try {
@@ -123,11 +155,13 @@ export default function App() {
                       onChange={(e) => updateResource(index, "selectedResource", e.target.value)}
                     >
                       <option value="">Select a Resource</option>
-                      {resources.map((resource) => (
-                        <option key={resource.name} value={resource.name}>
-                          {resource.name}
-                        </option>
-                      ))}
+                      {resources
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((resource) => (
+                          <option key={resource.name} value={resource.name}>
+                            {resource.name}
+                          </option>
+                        ))}
                     </select>
                   </td>
 
@@ -135,21 +169,15 @@ export default function App() {
                     {!res.customNaming ? `${res.abbreviation}-` : "Custom Naming Enabled"}
                   </td>
 
-                  <td className="border border-gray-300 px-4 py-2 flex items-center">
+                  <td className="border border-gray-300 px-4 py-2">
                     <input
                       type="text"
-                      placeholder="Enter naming pattern"
+                      placeholder={res.placeholder || "Enter naming pattern"}
                       className="p-2 border rounded w-full"
                       value={res.pattern}
                       onChange={(e) => updateResource(index, "pattern", e.target.value)}
                     />
-                    <input
-                      type="checkbox"
-                      className="ml-2"
-                      checked={res.customNaming}
-                      onChange={() => updateResource(index, "customNaming", !res.customNaming)}
-                    />
-                    <span className="ml-1 text-sm text-gray-600">Custom</span>
+                    {res.error && <p className="text-red-500 text-sm">{res.error}</p>}
                   </td>
                 </tr>
               ))}
@@ -158,7 +186,7 @@ export default function App() {
         </div>
       )}
 
-     {resourcesList.length > 0 && (
+      {resourcesList.length > 0 && (
         <div className="flex gap-4 mt-6">
           <button className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-700" onClick={generatePolicies}>
             Generate Policies

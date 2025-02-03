@@ -1,25 +1,19 @@
 function convertPatternToRegex(pattern) {
   let regexPattern = pattern;
-
-  // Substituir {qualquer_coisa}(max-X) por \w{1,X}
-  regexPattern = regexPattern.replace(/\{[^}]*\}\(max-(\d+)\)/g, ".{{1,$1}}");
-
-  // Substituir {qualquer_coisa}(X) por \w{X}
-  regexPattern = regexPattern.replace(/\{[^}]*\}\((\d+)\)/g, ".{{$1}}");
-
-  // Substituir {qualquer_coisa} sem () por string literal
+  regexPattern = regexPattern.replace(/\{[^}]*\}\(max-(\d+)\)/g, ".{1,$1}");
+  regexPattern = regexPattern.replace(/\{[^}]*\}\((\d+)\)/g, ".{$1}");
   regexPattern = regexPattern.replace(/\{([^}]*)\}/g, "$1");
 
-  // Certificar-se de que a regex cobre o nome todo
   return `^${regexPattern}$`;
 }
 
-function generatePolicy(resourceType, pattern) {
+function generatePolicy(resource) {
+  const { name, type, pattern } = resource;
   const regexPattern = convertPatternToRegex(pattern);
 
   return {
     "properties": {
-      "displayName": `Enforce naming convention for ${resourceType}`,
+      "displayName": `Enforce naming convention for ${name}`,
       "policyType": "Custom",
       "mode": "All",
       "metadata": {
@@ -28,8 +22,16 @@ function generatePolicy(resourceType, pattern) {
       "parameters": {},
       "policyRule": {
         "if": {
-          "field": "name",
-          "notMatch": regexPattern
+          "allOf": [
+            {
+              "field": "type",
+              "equals": type
+            },
+            {
+              "field": "name",
+              "notMatch": regexPattern
+            }
+          ]
         },
         "then": {
           "effect": "deny"
